@@ -568,7 +568,6 @@ SELECT *
 FROM calculofolhapagamento();
 SELECT *
 FROM folhapagamento;
-
 /* A função verifica o tipo de operação e obtém o número da carteira de
  trabalho do funcionário afetado pela operação. Em seguida, conta o número
  total de dependentes desse funcionário e atualiza o campo
@@ -577,11 +576,12 @@ FROM folhapagamento;
  automaticamente após uma operação de atualização, inserção ou exclusão
  na tabela. Ele chama a função "calculodep()" para realizar o cálculo e a
  atualização do número de dependentes do funcionário afetado. */
+
 CREATE OR REPLACE FUNCTION calculodep() RETURNS TRIGGER 
 AS $$
 DECLARE
      numF numeric;
-    total int;
+    total numeric;
 BEGIN 
     IF (TG_OP = 'DELETE') THEN 
         numF = OLD.fk_Funcionario_NumCarteiraT;
@@ -589,24 +589,17 @@ BEGIN
         numF = NEW.fk_Funcionario_NumCarteiraT;
     END IF;
 
-    SELECT INTO total count(*)
+    SELECT count(*) INTO total 
         FROM Dependente
         WHERE fk_Funcionario_NumCarteiraT = numF;
         UPDATE Funcionario
         SET numdependente = total
         WHERE numcarteirat = numF;
+    RETURN null;
+END; $$ language plpgsql;
 
-    return null;
-END;
-$$language plpgsql;
+CREATE OR REPLACE TRIGGER calculodep AFTER UPDATE OR INSERT OR DELETE ON Dependente FOR EACH ROW EXECUTE PROCEDURE calculodep();
 
-
-CREATE OR REPLACE TRIGGER calculodep
-AFTER
-UPDATE
-    OR
-INSERT
-    OR DELETE ON Dependente FOR EACH ROW EXECUTE PROCEDURE calculodep();
 INSERT INTO Dependente
 VALUES (
         'Dependente
@@ -731,13 +724,17 @@ END IF;
 NEW.Idade := ABS(idade);
 -- Para ficar positivo a idade
 RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+END; $$ LANGUAGE plpgsql;
 
-
+-- funçao deve ser criada dentro do serviço supabase para interação com o sistema de autenticação interno
+-- CREATE OR REPLACE FUNCTION get_email(uuid id) RETURNS text 
+-- AS $$
+-- BEGIN
+--   RETURN (SELECT au.email FROM auth.users au WHERE au.id = $1);
+-- END; $$ LANGUAGE plpgsql;
 
 -- Trigger que aciona a procedure para calcular a idade do dependente ao
-inserir uma nova linha na tabela Dependente
+-- inserir uma nova linha na tabela Dependente
 CREATE OR REPLACE TRIGGER trigger_calcular_idade_dependente BEFORE
 INSERT ON Dependente FOR EACH ROW EXECUTE FUNCTION calcularIdadeDependente();
 
@@ -760,8 +757,8 @@ CREATE VIEW funcionario_completo AS
 select f.*, c.nome, co.datacontratamento from funcionario as f join curriculo as c on f.rg = c.rg join contrata as co on c.RG = co.rgpessoa;
 
 
-CREATE FUNCTION gerarcustomensal() RETURNS void
-    AS $$DECLARE 
+CREATE FUNCTION gerarcustomensal() RETURNS void AS $$
+    DECLARE 
 	salariof numeric;
 	recebimento numeric :=0;
 	pagamentoforn numeric:=0;
@@ -785,7 +782,7 @@ BEGIN
 	END IF;
 	total := recebimento - total;
 	INSERT INTO customensal(valor, data) VALUES (total,now());
-END;$$; LANGUAGE plpgsql;
+END; $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION gerarfolhapagamento() RETURNS VOID AS
 $$
@@ -793,17 +790,13 @@ DECLARE
 	salariof numeric;
 	pagamentoforn numeric:=0;
 	total numeric :=0 ;
-	
 BEGIN
 	SELECT INTO salariof SUM(Salario) FROM Funcionario;
 	SELECT INTO pagamentoforn SUM(precocompra) FROM Fornece
 	WHERE data_pagamento < now() AND EXTRACT(MONTH FROM data_pagamento) >= EXTRACT(MONTH FROM NOW())-1 AND EXTRACT(YEAR FROM data_pagamento) = EXTRACT(YEAR FROM NOW());
 	total := salariof + pagamentoforn;
 	INSERT INTO folhapagamento(total_mensal, mes_ano) VALUES (total,now());
-END;$$; LANGUAGE plpgsql;
+END; $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION get_email(uuid id) RETURNS text as
-BEGIN
-  RETURN (SELECT au.email FROM auth.users au WHERE au.id = $1);
-END;$$; LANGUAGE plpgsql;
+
 

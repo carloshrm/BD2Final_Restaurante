@@ -1,0 +1,37 @@
+.card{
+    margin: 5vh;
+    width: 200px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 25px;
+    background-color: rgba(41, 124, 197, 0.087);
+}
+
+.card-body{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.c{
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+}
+
+h4{
+    justify-items: center;
+}
+
+.img{
+    margin: 10px;
+    width: 50%;
+    border-radius: 100px;
+}
+
+.bc{
+    width: 120px;
+}
